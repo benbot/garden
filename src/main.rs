@@ -29,9 +29,23 @@ fn adjust_cam(mut q: Query<&mut TiledProjection>, mut w: ResMut<Windows>) {
     win.set_resolution(size.into(), size.into());
 }
 
+#[cfg(target_arch = "wasm32")]
+fn setup_canvas(app: &mut App) {
+    let mut d = WindowDescriptor::default();
+    d.canvas = Some("#testcan".to_string());
+
+    app.insert_resource(d);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn setup_canvas(app: &mut App) {}
+
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
+    let mut app = App::new();
+
+    setup_canvas(&mut app);
+
+    app.add_plugins(DefaultPlugins)
         .add_plugin(TerminalPlugin)
         .add_plugin(TiledCameraPlugin)
         .add_plugin(TokenPlugin)

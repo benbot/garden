@@ -1276,6 +1276,7 @@ dependencies = [
  "bevy_ascii_terminal",
  "bevy_pixel_camera",
  "bevy_tiled_camera",
+ "rand",
 ]
 
 [[package]]

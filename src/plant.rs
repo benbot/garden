@@ -1,10 +1,14 @@
 use crate::player::Player;
-use bevy::prelude::*;
+use bevy::{ecs::component, prelude::*};
+use rand::prelude::*;
 
 use crate::token::{Position, Token, TokenBundle};
 
 #[derive(Component)]
 struct SpawnTime(f64);
+
+#[derive(Component)]
+struct Growing(bool);
 
 #[derive(Component)]
 struct Plant;
@@ -13,16 +17,53 @@ struct Plant;
 struct PlantBundle {
     plant: Plant,
     spawn_time: SpawnTime,
+    growing: Growing,
 
     #[bundle]
     token: TokenBundle,
 }
 
-fn grow(mut q: Query<(&mut Token, &mut SpawnTime), With<Plant>>, time: Res<Time>) {
-    for (mut p, mut spawn_time) in q.iter_mut() {
-        if time.seconds_since_startup() - spawn_time.0 > 10.0 {
-            p.0 = '|';
+impl PlantBundle {
+    fn new(x: i32, y: i32, time: &Time) -> Self {
+        Self {
+            spawn_time: SpawnTime(time.seconds_since_startup()),
+            growing: Growing(true),
+            plant: Plant,
+            token: TokenBundle::new(x, y, 'P'),
+        }
+    }
+}
+
+// TODO: Probably want to call this grow_wheat, since it makes pretty good looking wheat
+fn grow(
+    mut cmd: Commands,
+    mut q: Query<(&mut Token, &Position, &mut SpawnTime, &mut Growing), With<Plant>>,
+    time: Res<Time>,
+) {
+    for (mut p, pos, mut spawn_time, mut growing) in q.iter_mut() {
+        if time.seconds_since_startup() - spawn_time.0 > 3.0 {
+            match p.0 {
+                'P' => p.0 = '|',
+                '\\' => {}
+                '/' => {}
+                '|' => {
+                    p.0 = '|';
+                    let u: i32 = thread_rng().gen_range(-1..=1);
+                    let mut plant = PlantBundle::new(pos.0 + u, pos.1 + 1, time.as_ref());
+                    plant.token.token = match u {
+                        0 => Token('|'),
+                        1 => Token('/'),
+                        -1 => Token('\\'),
+                        _ => panic!("woah {} not expected!", u),
+                    };
+                    cmd.spawn_bundle(plant);
+                }
+                _ => panic!("Woah {} not expected!", p.0),
+            }
             spawn_time.0 = time.seconds_since_startup();
+            if thread_rng().gen_range(0..100) as u32 > 90 {
+                growing.0 = false;
+            }
         }
     }
 }
@@ -36,11 +77,7 @@ fn plant_plant(
     if input.just_pressed(KeyCode::Z) {
         let player = q.single();
 
-        cmd.spawn_bundle(PlantBundle {
-            spawn_time: SpawnTime(time.seconds_since_startup()),
-            plant: Plant,
-            token: TokenBundle::new(player.0, player.1, 'P'),
-        });
+        cmd.spawn_bundle(PlantBundle::new(player.0, player.1, time.as_ref()));
     }
 }
 
